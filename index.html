@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Face Shape & Style Recommendation</title>
+</head>
+<body>
+    <h2>Upload your photo for face shape and styling recommendations</h2>
+    <form id="photoForm">
+        <label for="file_name">Choose a photo:</label><br>
+        <input type="file" id="file_name" name="file_name" required><br><br>
+        
+        <label for="person_see_up_dos">See Updos:</label><br>
+        <input type="text" id="person_see_up_dos" name="person_see_up_dos" required><br><br>
+        
+        <label for="person_hair_length">Hair Length:</label><br>
+        <input type="text" id="person_hair_length" name="person_hair_length" required><br><br>
+        
+        <input type="submit" value="Submit">
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        const form = document.getElementById('photoForm');
+        const resultDiv = document.getElementById('result');
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const formData = new FormData();
+            const fileInput = document.getElementById('file_name');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                resultDiv.innerHTML = "Please select a photo.";
+                return;
+            }
+
+            formData.append('file', file);
+
+            // Step 1: Upload image to server
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(uploadResponse => {
+                if (uploadResponse.success) {
+                    const fileName = uploadResponse.file_name;
+                    const personSeeUpDos = document.getElementById('person_see_up_dos').value;
+                    const personHairLength = document.getElementById('person_hair_length').value;
+
+                    // Step 2: Send prediction request
+                    return fetch('/predict', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            file_name: fileName,
+                            person_see_up_dos: personSeeUpDos,
+                            person_hair_length: personHairLength
+                        })
+                    });
+                } else {
+                    throw new Error("Upload failed.");
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                resultDiv.innerHTML = `
+                    <p><strong>Predicted Face Shape:</strong> ${data["Face Shape"]}</p>
+                    <img src="/output/${data.img_filename}" alt="Recommended Style" width="300">
+                `;
+            })
+            .catch(err => {
+                console.error(err);
+                resultDiv.innerHTML = "An error occurred. Please try again.";
+            });
+        });
+    </script>
+</body>
+</html>
